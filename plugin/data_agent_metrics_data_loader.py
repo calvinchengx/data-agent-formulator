@@ -34,6 +34,7 @@ import re
 from typing import Any
 
 import pyarrow as pa
+from data_formulator.data_loader.external_data_loader import ExternalDataLoader
 
 
 def _sibling(name: str):
@@ -62,7 +63,6 @@ DataAgentDataLoader = _agent.DataAgentDataLoader
 ExecutorRefusal = _agent.ExecutorRefusal
 arrow_type_for = _agent.arrow_type_for
 _to_array = _agent._to_array
-from data_formulator.data_loader.external_data_loader import ExternalDataLoader
 
 #: How many values of a slot column become their own table. A template with an
 #: unbound slot is not importable, and offering every value of a high-cardinality
