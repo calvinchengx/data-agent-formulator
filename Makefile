@@ -19,7 +19,7 @@ endif
 
 PY ?= $(shell for c in python3.13 python3.12 python3 python py; do if "$$c" -c 'import sys; assert sys.version_info >= (3,12)' >/dev/null 2>&1; then echo "$$c"; break; fi; done)
 
-.PHONY: help doctor test witness witnesses check lint format
+.PHONY: help doctor login test witness witnesses check lint format
 
 help: ## Show the available targets
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -37,6 +37,9 @@ doctor: ## Check the toolchain, and that the upstream stack is reachable
 	  printf "  \033[31mFAIL\033[0m  no upstream checkout at $(DAS_DIR); the design is checked against its contract\n"; ok=0; \
 	fi; \
 	[ $$ok = 1 ] && echo "doctor: ready" || { echo "doctor: fix the FAIL rows"; exit 1; }
+
+login: ## Sign in and write a short-lived token for the loader to read
+	uv run python scripts/login.py $(ARGS)
 
 test: ## The checks that hold this repository's scaffold to itself
 	uv run --with pytest python -m pytest -q $(ARGS)

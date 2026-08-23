@@ -34,6 +34,16 @@ moved the plan.
 | The caller's bearer survives the gateway's `/warehouse-rest` route (§5) | 🟢 **run** — one statement, three seeded identities, three different outcomes: a column refusal by role name, the same column read, and a workspace refusal for a principal with no role | `make test` — `tests/test_identity_witness.py`, against a live stack; skips visibly without one | n/a — this is the transport, not the UI |
 | The `ExternalDataLoader` interface in §3 is the pinned release's, not `main`'s | 🟢 — and it was wrong in four ways: `auth_instructions` is a fifth abstract member, `apply_import_projection` and `probe` do not exist at the pin, and a plugin **wins** a key collision here rather than being rejected | `make test` — `tests/test_interface_pin.py` introspects the installed package | n/a |
 
+## Signing in
+
+| Capability | Witnessed locally | Check | Witnessed running |
+|---|---|---|---|
+| Every `make` target a document names exists — the rule that would have caught `make login` being named in three places before it was written | 🟢 | `make test` | n/a |
+| The tenant issues a device code, and an unfinished sign-in reads as *pending* rather than as a failure | 🟢 **run** | `make test` | n/a |
+| The token file is `0600`, set before the bytes are written rather than after | 🟢 | `make test` | n/a |
+| The broker names the identity it signed in as, without trusting the token to authorize anything | 🟢 | `make test` | n/a |
+| **A person completes the sign-in and the loader reads the token** | 🔴 **not run** — the emulator's `verification_uri` names its in-network hostname, which a workstation browser cannot resolve (`upstream-issues.md` 2). The witnesses above stop exactly where a browser would start | — | not yet |
+
 ## The loader
 
 | Capability | Witnessed locally | Check | Witnessed running |

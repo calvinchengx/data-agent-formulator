@@ -26,5 +26,23 @@ that both executors pass therefore say nothing about those three routes.
 **Status:** to report upstream. Not worked around here — the loader calls the
 routes the service actually serves, and `docs/00-plan.md` §8 says so.
 
+## 2. `entra-emulator` — the device-code URI names the in-network host
+
+`POST /{tenant}/oauth2/v2.0/devicecode` returns
+`verification_uri: https://entra-emulator:8443/...`, which is the hostname
+services inside the stack's docker network use. `make login` runs on the
+workstation, where that name does not resolve, so the URI printed for a person
+to open cannot be opened.
+
+**Cost:** the broker prints a URI that does not work from where it runs. Not
+worked around here — `make login` prints what the tenant returned rather than
+rewriting it, because a broker that silently repairs its tenant's answers
+hides the defect and would keep hiding it against real Entra, where the URI is
+correct and must be used as given.
+
+**Where:** `entra-emulator`, the device-code endpoint.
+
+**Status:** to report upstream.
+
 _Nothing else recorded. Data Formulator itself has not been run as an
 application yet._

@@ -115,6 +115,24 @@ def token_for(upn: str, cfg: dict[str, str]) -> str:
     return payload["access_token"]
 
 
+def claims(token: str) -> dict:
+    """The token's payload, read WITHOUT verifying it.
+
+    Safe only because of what it is used for: telling a person which identity
+    they just signed in as. Nothing authorizes anything on the strength of
+    this -- the executor validates the signature, the audience, the issuer and
+    the expiry for real, and its decision is the only one that counts.
+    """
+    import base64
+
+    try:
+        payload = token.split(".")[1]
+        padded = payload + "=" * (-len(payload) % 4)
+        return json.loads(base64.urlsafe_b64decode(padded))
+    except (IndexError, ValueError):
+        return {}
+
+
 def executor(cfg: dict[str, str]) -> str:
     """The executor's base URL, on the surface §5 decided."""
     path = (
