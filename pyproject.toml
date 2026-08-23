@@ -3,7 +3,13 @@ name = "data-agent-formulator"
 version = "0.1.0"
 description = "A Data Formulator data loader that reads through data-agent-service's executor"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+  # The pin from docs/00-plan.md §11. It is a real dependency rather than a
+  # dev one: the loader is imported by Data Formulator, so the interface it
+  # implements has to be the installed one, and tests/test_interface_pin.py
+  # introspects this package rather than trusting the prose.
+  "data-formulator==0.7.0",
+]
 
 [dependency-groups]
 dev = [

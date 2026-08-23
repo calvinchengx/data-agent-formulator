@@ -11,7 +11,10 @@ executor instead of holding a warehouse credential of its own — so an
 exploratory charting session inherits on-behalf-of identity, the schema
 allow-list, the row ceiling, and a refusal that stays a refusal.
 
-> **Status: designed, not built.** There is no loader yet.
+> **Status: phase 0 done, no loader yet.** The two decisions the design rested
+> on have been checked and both moved the plan: the caller's bearer *does*
+> survive the gateway's REST route, and the loader interface was wrong in four
+> ways when read from `main` instead of the pin.
 > [`docs/00-plan.md`](docs/00-plan.md) is the design — the interface, the
 > mapping onto the executor's contract, the four hazards, and the order of
 > work. [`docs/parity.md`](docs/parity.md) is green only on rows about files
@@ -67,10 +70,9 @@ make doctor   # toolchain, and the upstream contract this design is checked agai
 make check    # everything CI's quality job runs, in the order it runs it
 ```
 
-The first thing to be built is not the loader. It is one witness: **a token
-identifying user A, sent through the gateway's `/warehouse-rest` route,
-returns user A's rows and not user B's.** The whole design rests on the
-bearer surviving that hop, and it has not been checked. See §5 of the plan.
+`make test` includes witnesses that need a live upstream stack (`make up` in
+`../data-agent-service`). They skip visibly without one rather than passing on
+nothing — `make witness` runs only those.
 
 ## Upstream
 

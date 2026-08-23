@@ -24,15 +24,15 @@ upstream stack.
 | No row here is marked green without naming a check that produces it | 🟢 | `make test` | n/a |
 | The four executor calls this design rests on exist in the upstream contract, checked against `services/contract/openapi.json` rather than against memory | 🟢 | `make test` — skips visibly when the sibling checkout is absent | n/a |
 
-## The design's own unchecked decisions
+## The design's own decisions, now checked
 
-Two things `docs/00-plan.md` decides and has not verified. Both are written in
-the plan as unchecked; they are here so neither can be quietly forgotten.
+Both were written into the plan as unchecked. Both have been run, and both
+moved the plan.
 
 | Decision | Witnessed locally | Check | Witnessed running |
 |---|---|---|---|
-| The caller's bearer survives the gateway's `/warehouse-rest` route — user A's token returns user A's rows, not user B's (§5) | 🔴 **not run** — the first thing built. Nothing else rests on solid ground until it passes | — | not yet |
-| The `ExternalDataLoader` interface in §3 is the one in the pinned release, not the one on `main` it was read from | 🔴 not yet | — | not yet |
+| The caller's bearer survives the gateway's `/warehouse-rest` route (§5) | 🟢 **run** — one statement, three seeded identities, three different outcomes: a column refusal by role name, the same column read, and a workspace refusal for a principal with no role | `make test` — `tests/test_identity_witness.py`, against a live stack; skips visibly without one | n/a — this is the transport, not the UI |
+| The `ExternalDataLoader` interface in §3 is the pinned release's, not `main`'s | 🟢 — and it was wrong in four ways: `auth_instructions` is a fifth abstract member, `apply_import_projection` and `probe` do not exist at the pin, and a plugin **wins** a key collision here rather than being rejected | `make test` — `tests/test_interface_pin.py` introspects the installed package | n/a |
 
 ## The loader
 

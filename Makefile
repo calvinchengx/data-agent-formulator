@@ -19,7 +19,7 @@ endif
 
 PY ?= $(shell for c in python3.13 python3.12 python3 python py; do if "$$c" -c 'import sys; assert sys.version_info >= (3,12)' >/dev/null 2>&1; then echo "$$c"; break; fi; done)
 
-.PHONY: help doctor test witnesses check lint format
+.PHONY: help doctor test witness witnesses check lint format
 
 help: ## Show the available targets
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -40,6 +40,9 @@ doctor: ## Check the toolchain, and that the upstream stack is reachable
 
 test: ## The checks that hold this repository's scaffold to itself
 	uv run --with pytest python -m pytest -q $(ARGS)
+
+witness: ## Only the checks that need the upstream stack running
+	uv run --with pytest python -m pytest -q -rs tests/test_identity_witness.py $(ARGS)
 
 witnesses: ## Record what the suite witnessed, for the badge (--check to verify)
 	uv run --with pytest python scripts/witnesses.py $(ARGS)

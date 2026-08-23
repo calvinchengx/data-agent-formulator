@@ -15,9 +15,16 @@ that reads through `data-agent-service`'s executor. Two facts set the bar, and
 both cut against running it multi-user:
 
 - **A Data Formulator plugin is arbitrary Python in the Data Formulator server
-  process.** That is why upstream disables plugin scanning by default in
-  multi-user deployments, and this repository does not ask anyone to turn it
-  back on. A single-user, single-machine posture is the intended one.
+  process.** Scanning is on in local mode and a hosted deployment must set
+  `DF_ALLOW_PLUGINS=1` deliberately. This repository does not ask anyone to.
+  A single-user, single-machine posture is the intended one.
+- **At the pinned release, a plugin may shadow a built-in loader.** On
+  `data_formulator==0.7.0` a plugin key that collides with a built-in one
+  wins, so a file in the plugin directory can replace `mssql` and receive the
+  connection strings typed into it. (`main` later reverses this and rejects
+  the collision.) Nothing here does that — the key is `data_agent` — but it
+  means **the plugin directory is a trust boundary**, and the mitigation is
+  controlling what is in it rather than this loader being well-behaved.
 - **Data Formulator brings its own model and derives its own fields.** It
   consumes the executor's authority — the caller's identity, the read-only
   guard, the allow-list, the row ceiling — and supplies its own judgement. A

@@ -42,10 +42,16 @@ catalog into what the model reads that the wrong derivation is not the
 convenient one. It cannot close it. A tool that can write arbitrary
 transformations can always write a wrong one.
 
-## 3. The interface, as read
+## 3. The interface, as read from the pin
 
-`ExternalDataLoader` is an ABC with four required members and a large
-concrete tail:
+> Read from `data_formulator==0.7.0`, the pin in §11, and held there by
+> `tests/test_interface_pin.py` — which introspects the installed package
+> rather than trusting this prose. The first draft of this section was read
+> from `main` and was wrong in four ways by the time it met the release. The
+> corrections are noted inline, because *what* moved is more useful to a
+> future reader than a section that was always right.
+
+`ExternalDataLoader` is an ABC with **five** required members:
 
 ```python
 @abstractmethod
@@ -55,6 +61,11 @@ def __init__(self, params: dict[str, Any]): ...
 @staticmethod
 @abstractmethod
 def list_params() -> list[dict[str, Any]]: ...
+
+
+@staticmethod
+@abstractmethod
+def auth_instructions() -> str: ...  # ← the plan missed this one
 
 
 @abstractmethod
@@ -67,25 +78,53 @@ def fetch_data_as_arrow(
 ) -> pa.Table: ...
 ```
 
-Concrete on the base and inherited for free: `fetch_data_as_dataframe()`,
-`ingest_to_workspace()`, `validate_params()`, `catalog_hierarchy()`, `ls()`,
-`list_tables_tree()`, `get_column_types()`, `probe()`, `test_connection()`.
-Module helpers: `apply_import_projection()`, `build_where_clause()`,
-`build_where_clause_inline()`.
+Concrete on the base and inherited: `fetch_data_as_dataframe()`,
+`ingest_to_workspace()`, `validate_params()`, `get_safe_params()`,
+`delegated_login_config()`, `catalog_hierarchy()`, `ls()`,
+`list_tables_tree()`, `get_column_types()`, `search_catalog()`,
+`test_connection()`. A `DISPLAY_NAME` class attribute overrides the
+title-cased registry key in the UI.
+
+Module helpers for turning `import_options` into SQL: `build_where_clause()`,
+`build_where_clause_inline()`, `build_source_filter_where_clause_inline()`,
+`sanitize_table_name()`. **`apply_import_projection()` does not exist at the
+pin** — it is a `main`-only helper, and the first draft named it. Neither does
+`probe()`.
+
+Three things the pin offers that the design is better for:
+
+* **`validate_params(params, skip_auth_tier=True)`.** A parameter declared
+  `tier="auth"` is not required up front, "useful for SSO/token flows where
+  auth comes externally" in upstream's own words. That is exactly §6's shape,
+  and it is a supported one rather than something worked around.
+* **`list_params()` entries may declare `sensitive: True`**, and
+  `get_safe_params()` strips those before parameters are written into stored
+  metadata. Useful, and *not* a reason to relax §6 — see the note there.
+* **`delegated_login_config()`** returns `{"login_url", "label"}` and gives the
+  loader a popup sign-in whose window posts an `access_token` back. Superset's
+  bridge uses it. It is the better long-run answer for §6 than a token file,
+  and §10 keeps it as step 6b rather than phase 1, because it is a browser
+  flow and the token file is twenty lines.
+
+`MAX_IMPORT_ROWS` is `2_000_000` at the module level — a Data Formulator-side
+ceiling that exists regardless of what `DAF_MAX_ROWS` asks for.
 
 Discovery is out of tree. `data_loader/__init__.py` scans `DF_PLUGIN_DIR`
 (then `DATA_FORMULATOR_HOME/plugins`, then `~/.data_formulator/plugins`) for
 `*_data_loader.py` and derives the registry key from the filename, so
-`data_agent_data_loader.py` registers as `data_agent`. A plugin may not
-override a built-in key; the collision is rejected and logged, deliberately,
-because a plugin shadowing `mssql` would be a credential-exfiltration path.
+`data_agent_data_loader.py` registers as `data_agent`. Scanning is enabled
+only in local mode; a hosted deployment must set `DF_ALLOW_PLUGINS=1`
+deliberately, "since loading a plugin executes arbitrary Python code in the
+server process".
 
-> **Unchecked.** This was read from `main`. The pin in §11 is `0.7.0`, the
-> latest stable release, and `main` is ahead of it. The first commit of the
-> loader must re-read the ABC **from the installed pin** and correct this
-> section if it differs. A design written against a branch and shipped against
-> a release is the same class of error as a runbook naming parameters that do
-> not exist.
+> **A correction with teeth.** The first draft said a plugin may not override
+> a built-in key, and that the collision is rejected. That is `main`'s
+> behaviour. **At the pin, the plugin wins.** So on 0.7.0 a file dropped into
+> the plugin directory *can* shadow `mssql` and receive the connection strings
+> a person types into it. Nothing in this repository does that — the key is
+> `data_agent` and collides with nothing — but the claim in `SECURITY.md` had
+> to be corrected, and the mitigation is the plugin directory being trusted,
+> not the loader being well-behaved.
 
 ## 4. The mapping
 
@@ -129,14 +168,14 @@ accidentally depend on the Python one. And MCP would mean a session, a
 lifecycle and a tool-description surface inside a function whose whole job is
 to return a table.
 
-> **Unchecked, and load-bearing.** Upstream documents that a *synthesised* MCP
-> call loses the caller's headers, which is why the executor speaks MCP
-> itself. `/warehouse-rest` is documented as a route, not as a synthesis, so
-> the bearer should pass through — but "should" is the word that costs days.
-> The first witness this repository records is: **a token that identifies
-> user A, sent to `/warehouse-rest`, produces user A's rows and not user B's.**
-> Nothing else is built until that passes. If it does not, the loader speaks
-> MCP after all and §5 is rewritten.
+> **Checked.** `tests/test_identity_witness.py` sends one statement —
+> `SELECT TOP 1 email FROM dbo.dim_customer` — through `/warehouse-rest` under
+> three seeded identities, and gets three different answers: Alice
+> (`Data.Analyst`) is refused the column by name, Carol (`Data.Finance`) reads
+> it, and Bob, who holds no role, is refused the workspace by the source. A
+> gateway that had replaced the bearer with one principal would have answered
+> all three identically. **The bearer survives the route**, and the surface
+> decision stands.
 
 ## 6. Identity
 
@@ -152,15 +191,29 @@ a session can be reopened. A bearer in that store is a bearer on disk, in a
 file whose lifetime is the workspace's rather than the token's. So:
 
 * `list_params()` declares the gateway base, the executor path, the source
-  name, the tenant and client id, and the row ceiling. **No secret.**
+  name, the tenant and client id, and the row ceiling. **No secret.** The
+  bearer, if it is declared at all, is `tier="auth"` so
+  `validate_params(skip_auth_tier=True)` does not demand it up front — the pin
+  supports exactly this flow (§3).
 * The token comes from a broker outside Data Formulator: `make login` runs the
   device-code flow against the tenant (the family's shape for a CLI — upstream
   `docs/03-architecture.md`, "device code for CLIs") and writes the result to
   `DAF_TOKEN_FILE`, mode `0600`. The loader reads it per call and holds it in
   memory only.
+* `get_safe_params()` and `sensitive: True` are **not** the mitigation. They
+  keep a declared-sensitive parameter out of stored *metadata*; they do not
+  make a parameter store a safe place for a bearer. The token stays out of
+  `params` entirely rather than being declared carefully.
 * Expiry needs no rule. An expired token is refused by the executor with a 401
   and the loader surfaces it as a refusal to re-authenticate. Authority
   expires where it always did; the loader is not a grant.
+
+**Later, a popup instead of a file.** `delegated_login_config()` gives a
+loader its own sign-in window, which is what a person actually wants and what
+Superset's bridge already does. It is step 6b in §10 rather than phase 1: a
+browser flow against the tenant is a day, and the token file is twenty lines.
+The token file is not a stepping stone that has to be removed — both feed the
+same "read the bearer, hold it in memory" path.
 
 **`authz_tier` is reported, not assumed.** `GET /sources` says whether a
 source is `user` or `service` tier. A `service`-tier source — a DuckDB source
@@ -258,9 +311,11 @@ compensate. That is also why cancelling a browse needs no rule.
 Each step ends with a row in `parity.md` turning green, or with this document
 being wrong and rewritten.
 
-1. **The identity witness.** User A's token to `/warehouse-rest` returns user
-   A's rows. Nothing else is built first, because §5 rests on it.
-2. **The ABC, re-read from the pin.** Correct §3 against `0.7.0` as installed.
+1. ~~**The identity witness.**~~ **Done.** Three identities, one statement,
+   three outcomes — `tests/test_identity_witness.py`. §5 stands.
+2. ~~**The ABC, re-read from the pin.**~~ **Done**, and it moved §3 in four
+   ways — `tests/test_interface_pin.py` now holds the section to the installed
+   package rather than to prose.
 3. **`list_params()` and `test_connection()`.** The loader is discovered from
    `DF_PLUGIN_DIR`, appears in the UI, and connects with no secret in its
    configuration.
@@ -271,12 +326,17 @@ being wrong and rewritten.
    the schema is inferred instead.
 6. **Refusals.** The corpus of `import_options` shapes; a refusal reaching the
    UI as a refusal.
+6b. **A popup instead of a token file** — `delegated_login_config()` against
+   the tenant (§6). Deferred, not skipped: it changes where the bearer comes
+   from and nothing else.
 7. **Definitions in metadata** (§8 phase 1).
 8. **The wrong-winner question**, asked through Data Formulator, end to end.
    Green or red, this is the row the repository is for.
-9. **The emulator witnesses.** Data Formulator's stock `mssql`, `azure_blob`
-   and `databricks` loaders against this family's emulators — third-party
-   evidence, and failures filed upstream.
+9. **The emulator witnesses.** Data Formulator's stock `mssql` and
+   `azure_blob` loaders against this family's emulators — third-party
+   evidence, and failures filed upstream. **Not `databricks`:** the pin has no
+   `databricks_data_loader.py`; it arrives after 0.7.0. That row waits for the
+   pin to move rather than for the emulator.
 10. **The metrics loader** (§8 phase 2).
 
 ## 11. Settings
@@ -287,10 +347,13 @@ lacks — or a key in the template named nowhere — fails `make test`.
 | Setting | Read by | Meaning |
 |---|---|---|
 | `DATA_FORMULATOR_VERSION` | the harnesses, and this document | The pin the ABC in §3 must be checked against. `0.7.0` |
+| `DF_ALLOW_PLUGINS` | Data Formulator | Empty. Scanning is on in local mode already; setting it is how a *hosted* deployment opts in, and this repository does not ask anyone to |
 | `DF_PLUGIN_DIR` | Data Formulator | Where the loader is discovered. Naming it means the other two discovery locations never decide anything |
 | `DATA_FORMULATOR_HOME` | Data Formulator | Deliberately empty. Setting it would give the plugin a second home and a precedence rule between the two |
 | `DAS_STACK_NETWORK` | compose | The upstream stack's network, joined rather than recreated |
-| `DAF_APIM_BASE` | the loader | The gateway. The only host the loader talks to |
+| `DAF_APIM_BASE` | the loader | The gateway, as a workstation sees it — the host-published port, not the in-network one |
+| `DAF_TLS_INSECURE` | the loader, the witnesses | Local development only. The emulator family serves self-signed certificates |
+| `DAF_AUTHORITY` | `make login`, the witnesses | The tenant's token endpoint host |
 | `DAF_WAREHOUSE_REST_PATH` | the loader | `/warehouse-rest` — the executor's REST route for non-MCP clients (§5) |
 | `DAF_WAREHOUSE_MCP_PATH` | the loader, if §5 is rewritten | `/warehouse/mcp`. Present because the fallback in §5 must have a home, not because it is used |
 | `DAF_EXECUTOR_SURFACE` | the loader | `rest` or `mcp`. The decision in §5, in one place |
@@ -299,4 +362,5 @@ lacks — or a key in the template named nowhere — fails `make test`.
 | `DAF_CLIENT_ID` | `make login` | The public client id for that flow |
 | `DAF_SCOPE` | `make login` | `api://data-agent-service/access_as_user` |
 | `DAF_TOKEN_FILE` | `make login`, the loader | Where the broker writes the token, mode `0600`. Never a Data Formulator param (§6) |
+| `DAF_TEST_PASSWORD` | the witnesses | The seeded personas' password on a local stack. Published upstream, not a secret this repository keeps |
 | `DAF_MAX_ROWS` | the loader | The ceiling the loader asks for. The executor applies its own regardless; this one stops a browse from asking for a warehouse |
