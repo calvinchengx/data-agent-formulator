@@ -1,0 +1,14 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "data-formulator",
+      "runtimeExecutable": "scripts/serve.sh",
+      "runtimeArgs": [
+        "--port",
+        "5567"
+      ],
+      "port": 5567
+    }
+  ]
+}

@@ -48,14 +48,14 @@ moved the plan.
 
 | Capability | Witnessed locally | Check | Witnessed running |
 |---|---|---|---|
-| The plugin is discovered from `DF_PLUGIN_DIR` with no fork of Data Formulator and no patched file | 🟢 — Data Formulator's own registry, run out of process, reports `data_agent` under `PLUGIN_LOADERS`; an empty plugin dir reports nothing | `make test` | not yet |
-| `list_tables()` returns what the executor says this caller may see, and nothing else | 🟢 **run** — the analyst's column set for `dbo.dim_customer` is a strict subset of the finance role's, and `email` is the difference | `make test` | not yet |
-| `fetch_data_as_arrow()` sends one read-only `SELECT` and the executor accepts it | 🟢 **run** — seven `import_options` shapes, each fetched through the guard | `make test` | not yet |
+| The plugin is discovered from `DF_PLUGIN_DIR` with no fork of Data Formulator and no patched file | 🟢 | `make test` | 🟢 **run** — `make serve`, then `/api/data-loaders` reports both loaders with `source: plugin` and `disabled: none` |
+| `list_tables()` returns what the executor says this caller may see, and nothing else | 🟢 **run** — the analyst's column set for `dbo.dim_customer` is a strict subset of the finance role's, and `email` is the difference | `make test` | 🟢 **run** — the app's own `/api/connectors/get-catalog` renders the columns, the catalog description and the service-tier note |
+| `fetch_data_as_arrow()` sends one read-only `SELECT` and the executor accepts it | 🟢 **run** — seven `import_options` shapes, each fetched through the guard | `make test` | 🟢 **run** — imported through the app; 500 rows came back where 2000 were asked for, because the executor's own ceiling is the one that counts |
 | A temporal column arrives as a timestamp rather than as text — cast from ISO-8601, never left as a string | 🟢 **run** — found while building, not while planning | `make test` | not yet |
-| A decimal column arrives as a decimal — the Arrow schema is built from the executor's declared types, never inferred from JSON rows | 🟢 **run** — `decimal(19,4)` arrives as `decimal128(19,4)` holding `Decimal`s, and a companion check shows inference would have produced `float64` | `make test` | not yet |
+| A decimal column arrives as a decimal — the Arrow schema is built from the executor's declared types, never inferred from JSON rows | 🟢 **run** — `decimal(19,4)` arrives as `decimal128(19,4)` holding `Decimal`s, and a companion check shows inference would have produced `float64` | `make test` | 🟢 **run** — the parquet Data Formulator wrote holds `decimal128(19, 4)` and `Decimal('3856.7174')`. It survives the application's own ingest |
 | A refusal reaches the UI as a refusal, never as an empty chart | 🟢 — a principal with no role raises `ExecutorRefusal` carrying the executor's own reason; a missing token raises one naming `make login` | `make test` | not yet — the UI half needs a browser |
 | `import_options` — columns, filters, sort, size — becomes SQL the executor's guard accepts rather than refuses | 🟢 **run** — seven shapes, both dialects. T-SQL gets `TOP`, PostgreSQL gets `LIMIT`; a denied column never enters the statement and `SELECT *` is never generated | `make test` | not yet |
-| No warehouse credential exists in Data Formulator's configuration; the only secret is the caller's own bearer | 🟢 — `list_params()` declares no password, DSN or token, and marks nothing `sensitive` | `make test` | not yet |
+| No warehouse credential exists in Data Formulator's configuration; the only secret is the caller's own bearer | 🟢 — `list_params()` declares no password, DSN or token, and marks nothing `sensitive` | `make test` | 🟢 **run** — the connector Data Formulator persisted to disk holds the gateway, the source and the *path* to a token file. No secret is in it |
 | The parquet Data Formulator writes after a fetch is recorded at `service` tier, and the documents say so where a reader will meet it | 🔴 not yet | — | not yet |
 
 ## Semantics
@@ -66,7 +66,7 @@ moved the plan.
 | A metric that the catalog defines is present as a column, so the derivable-but-wrong field is not the only one to hand | 🟢 on this data — `resolution_minutes` is a real column beside `elapsed_minutes`. It is **not** general: where a metric is a formula rather than a column, §8 phase 2 is the answer and it is not built | `make test` | not yet |
 | The reversal is real on this data, measured through this loader | 🟢 **run** — ranked by wall-clock, one team is fastest; ranked by the business's definition, a different one is. Measured, not quoted from upstream's README | `make test` | n/a |
 | The metadata states the difference well enough that a model *could* avoid it | 🟢 — the definition says which figure to report, in the text the model reads | `make test` | not yet |
-| **The wrong-winner question, asked through Data Formulator, does not produce the wrong winner** | 🔴 **not run** — this needs a browser, an API key and a person. Everything above is the case for expecting it to pass, and none of it is the same claim | — | not yet |
+| **The wrong-winner question, asked through Data Formulator, does not produce the wrong winner** | 🔴 **not run** — the browser half is done: the app runs, both loaders register, and the governed tables import. What is missing is a **model**. Data Formulator gates its whole UI behind model selection and no API key is available here, so no chart has been drawn and no transformation has been generated | — | not yet |
 | A browse survives a catalog that is down, and says definitions are missing rather than showing none | 🟢 | `make test` | not yet |
 
 ## Data Formulator against the emulators
@@ -86,7 +86,7 @@ belongs in [`upstream-issues.md`](upstream-issues.md).
 
 | Capability | Witnessed locally | Check | Witnessed running |
 |---|---|---|---|
-| Tables are the promoter's released templates, and the measure is computed by the warehouse | 🟢 **run** — `SUM(revenue_usd)` arrives as `decimal128(38, 4)` holding exact `Decimal`s | `make test` | not yet |
+| Tables are the promoter's released templates, and the measure is computed by the warehouse | 🟢 **run** — `SUM(revenue_usd)` arrives as `decimal128(38, 4)` holding exact `Decimal`s | `make test` | 🟢 **run** — imported through the app; the stored parquet is `decimal128(38, 4)` |
 | The raw column the wrong derivation would need is **not** offered beside the metric | 🟢 — this is the property `data_agent` cannot have | `make test` | not yet |
 | A slot value is never chosen for the person: each becomes its own table, with the binding visible in the name | 🟢 **run** — two fiscal years, two tables | `make test` | not yet |
 | An aggregate is typed from what it aggregates, and an untypeable one is refused | 🟢 | `make test` | n/a |

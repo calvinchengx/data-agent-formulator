@@ -19,7 +19,7 @@ endif
 
 PY ?= $(shell for c in python3.13 python3.12 python3 python py; do if "$$c" -c 'import sys; assert sys.version_info >= (3,12)' >/dev/null 2>&1; then echo "$$c"; break; fi; done)
 
-.PHONY: help doctor login test witness witnesses check lint format
+.PHONY: help doctor login serve test witness witnesses check lint format
 
 help: ## Show the available targets
 	@grep -hE '^[a-z-]+:.*?## ' $(MAKEFILE_LIST) \
@@ -40,6 +40,9 @@ doctor: ## Check the toolchain, and that the upstream stack is reachable
 
 login: ## Sign in and write a short-lived token for the loader to read
 	uv run python scripts/login.py $(ARGS)
+
+serve: ## Start Data Formulator with this repository's plugin directory
+	scripts/serve.sh --port $${DAF_PORT:-5567}
 
 test: ## The checks that hold this repository's scaffold to itself
 	uv run --with pytest python -m pytest -q $(ARGS)

@@ -35,16 +35,33 @@ from typing import Any
 
 import pyarrow as pa
 
-# Same plugin directory. Data Formulator adds it to `sys.path` when it scans,
-# so this import works exactly where the file is meant to live -- and the tests
-# put the directory on the path themselves rather than pretending otherwise.
-from data_agent_data_loader import (
-    ConnectorError,
-    DataAgentDataLoader,
-    ExecutorRefusal,
-    _to_array,
-    arrow_type_for,
-)
+
+def _sibling(name: str):
+    """Load the other plugin in this directory, by path.
+
+    Data Formulator loads each plugin file directly and does **not** put the
+    plugin directory on `sys.path`, so `import data_agent_data_loader` fails at
+    run time -- the app reports the loader as disabled with a pip install hint
+    for a package that does not exist. A test that imported it with the path
+    patched passed happily while the application could not load it at all;
+    opening the UI is what found that, which is why docs/parity.md keeps
+    "witnessed running" as its own column.
+    """
+    import importlib.util
+
+    path = pathlib.Path(__file__).resolve().parent / f"{name}.py"
+    spec = importlib.util.spec_from_file_location(name, path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+_agent = _sibling("data_agent_data_loader")
+ConnectorError = _agent.ConnectorError
+DataAgentDataLoader = _agent.DataAgentDataLoader
+ExecutorRefusal = _agent.ExecutorRefusal
+arrow_type_for = _agent.arrow_type_for
+_to_array = _agent._to_array
 from data_formulator.data_loader.external_data_loader import ExternalDataLoader
 
 #: How many values of a slot column become their own table. A template with an

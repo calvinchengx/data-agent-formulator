@@ -11,6 +11,7 @@ quietly cheat — guessing a slot value, or guessing an aggregate's type.
 from __future__ import annotations
 
 import decimal
+import importlib.util
 import pathlib
 import sys
 
@@ -26,12 +27,19 @@ CANDIDATES = ROOT.parent / "data-agent-service" / "promoter" / "candidates.json"
 
 @pytest.fixture(scope="module")
 def mod():
-    """Import as Data Formulator does: the plugin directory on the path."""
-    sys.path.insert(0, str(PLUGIN_DIR))
-    try:
-        import data_agent_metrics_data_loader as module
-    finally:
-        sys.path.remove(str(PLUGIN_DIR))
+    """Load by path with the plugin directory NOT on `sys.path`.
+
+    This is exactly how Data Formulator loads it, and the earlier version of
+    this fixture -- which inserted the directory into `sys.path` -- passed while
+    the running application reported the loader as disabled. A fixture that is
+    kinder than production is a fixture that proves nothing.
+    """
+    assert str(PLUGIN_DIR) not in sys.path, "the plugin directory must not be importable here"
+    spec = importlib.util.spec_from_file_location(
+        "data_agent_metrics_data_loader", PLUGIN_DIR / "data_agent_metrics_data_loader.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
     return module
 
 

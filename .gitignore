@@ -11,3 +11,4 @@ dist/
 website/src/content/docs/
 website/.astro/
 .token
+.data_formulator/

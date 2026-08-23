@@ -100,6 +100,14 @@ Three things the pin offers that the design is better for:
 * **`list_params()` entries may declare `sensitive: True`**, and
   `get_safe_params()` strips those before parameters are written into stored
   metadata. Useful, and *not* a reason to relax §6 — see the note there.
+* **A plugin may not import its sibling by name.** Data Formulator loads each
+  plugin file by path and does *not* add the plugin directory to `sys.path`,
+  so `import data_agent_data_loader` from the metrics loader fails at run time
+  — the application reports the loader as `disabled` with a pip hint for a
+  package that does not exist. A test that patched `sys.path` passed happily
+  while the app could not load it at all. The metrics loader now loads its
+  sibling by path, and the test asserts the directory is *not* importable
+  before it starts.
 * **`delegated_login_config()`** returns `{"login_url", "label"}` and gives the
   loader a popup sign-in whose window posts an `access_token` back. Superset's
   bridge uses it. It is the better long-run answer for §6 than a token file,
@@ -254,6 +262,19 @@ the allow-list. The loader's job is to generate within that, and the witness
 is a corpus: every shape `import_options` can take, sent to the executor, and
 none refused. Where the executor legitimately refuses — a filter on a denied
 column — the refusal is the correct outcome and the corpus records it as one.
+
+**A decimal is exact in the store and a string in the preview.** Found by
+running the application, not by testing the loader. Data Formulator's preview
+JSON has no decimal type, so `decimal128(19,4)` is serialised as the string
+`"3856.7174"` and labelled `string` in the preview pane. The **stored parquet
+is `decimal128(19, 4)` holding real `Decimal`s** — nothing is lost, and the
+value is exact where it matters. But a person looking at the preview sees a
+text column where they expect a number, and the model reading that preview
+sees one too.
+
+The temptation is to hand Data Formulator a float so its preview looks right.
+That is the G8 mistake with better manners, and this repository does not take
+it. The decimal stays a decimal and the consequence is written down here.
 
 **A timestamp is a string on the wire, and must not stay one.** Found while
 building phase 2, not while planning it: JSON has no way to spell a timestamp,
