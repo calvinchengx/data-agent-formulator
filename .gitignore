@@ -1,0 +1,12 @@
+.env
+.env.prod
+__pycache__/
+.venv/
+.ruff_cache/
+.pytest_cache/
+node_modules/
+_site/
+dist/
+.coverage
+website/src/content/docs/
+website/.astro/

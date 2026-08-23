@@ -1,0 +1,25 @@
+[project]
+name = "data-agent-formulator"
+version = "0.1.0"
+description = "A Data Formulator data loader that reads through data-agent-service's executor"
+requires-python = ">=3.12"
+dependencies = []
+
+[dependency-groups]
+dev = [
+  "pytest>=8",
+  # Pinned to a floor rather than a version, as in the rest of the family:
+  # the ruleset below is what makes runs reproducible, and an older ruff
+  # would not understand it.
+  "ruff>=0.16",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

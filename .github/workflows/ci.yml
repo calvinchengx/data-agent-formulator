@@ -1,0 +1,51 @@
+# Lint and the checks that hold this repository to itself. There is no loader
+# here yet, so what CI can prove is that the files agree -- with each other and
+# with the upstream contract -- and it proves exactly that and no more
+# (docs/parity.md).
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, and the scaffold held to itself (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+      - run: uv python install 3.12
+
+      # Every gate runs, so one push reports everything wrong rather than the
+      # first thing wrong.
+      - name: Ruff
+        if: ${{ !cancelled() }}
+        run: uv run --with ruff ruff check .
+      - name: Format
+        if: ${{ !cancelled() }}
+        run: uv run --with ruff ruff format --check .
+      # The upstream-contract check skips here: data-agent-service is not
+      # checked out on a runner. It is a local gate, and docs/parity.md names
+      # it as one rather than letting a green CI imply it ran.
+      - name: The scaffold agrees with itself
+        if: ${{ !cancelled() }}
+        run: uv run --with pytest python -m pytest -q
+      - name: The recorded witness count is the one the suite proves
+        if: ${{ !cancelled() }}
+        run: uv run --with pytest python scripts/witnesses.py --check
