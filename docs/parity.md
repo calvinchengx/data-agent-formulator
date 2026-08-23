@@ -38,13 +38,13 @@ moved the plan.
 
 | Capability | Witnessed locally | Check | Witnessed running |
 |---|---|---|---|
-| The plugin is discovered from `DF_PLUGIN_DIR` with no fork of Data Formulator and no patched file | 🔴 not yet | — | not yet |
-| `list_tables()` returns what the executor says this caller may see, and nothing else | 🔴 not yet | — | not yet |
-| `fetch_data_as_arrow()` sends one read-only `SELECT` and the executor accepts it | 🔴 not yet | — | not yet |
+| The plugin is discovered from `DF_PLUGIN_DIR` with no fork of Data Formulator and no patched file | 🟢 — Data Formulator's own registry, run out of process, reports `data_agent` under `PLUGIN_LOADERS`; an empty plugin dir reports nothing | `make test` | not yet |
+| `list_tables()` returns what the executor says this caller may see, and nothing else | 🟢 **run** — the analyst's column set for `dbo.dim_customer` is a strict subset of the finance role's, and `email` is the difference | `make test` | not yet |
+| `fetch_data_as_arrow()` sends one read-only `SELECT` and the executor accepts it | 🔴 not yet — phase 2. It raises `NotImplementedError` naming the phase rather than returning an empty table | `make test` witnesses the refusal to pretend | not yet |
 | A decimal column arrives as a decimal — the Arrow schema is built from the executor's declared types, never inferred from JSON rows | 🔴 not yet | — | not yet |
 | A refusal reaches the UI as a refusal, never as an empty chart | 🔴 not yet | — | not yet |
 | `import_options` — columns, filters, sort, size — becomes SQL the executor's guard accepts rather than refuses | 🔴 not yet | — | not yet |
-| No warehouse credential exists in Data Formulator's configuration; the only secret is the caller's own bearer | 🔴 not yet | — | not yet |
+| No warehouse credential exists in Data Formulator's configuration; the only secret is the caller's own bearer | 🟢 — `list_params()` declares no password, DSN or token, and marks nothing `sensitive` | `make test` | not yet |
 | The parquet Data Formulator writes after a fetch is recorded at `service` tier, and the documents say so where a reader will meet it | 🔴 not yet | — | not yet |
 
 ## Semantics
