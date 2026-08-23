@@ -222,10 +222,11 @@ callers apart and the gateway's roles are the entire control. The loader shows
 the tier in the table listing. A person exploring should be able to see, on
 the screen, which of the two they are in.
 
-## 7. The four hazards
+## 7. The hazards
 
-These are the failure modes worth designing against, in the order they will
-bite.
+These are the failure modes worth designing against, in the order they bit.
+Four were planned; the fourth below was found while building, which is why the
+section is no longer called "the four hazards".
 
 **A decimal must not become a double.** `POST /query` returns JSON rows.
 `pa.Table.from_pylist` infers types from values, and a decimal arrives as a
@@ -253,6 +254,16 @@ the allow-list. The loader's job is to generate within that, and the witness
 is a corpus: every shape `import_options` can take, sent to the executor, and
 none refused. Where the executor legitimately refuses — a filter on a denied
 column — the refusal is the correct outcome and the corpus records it as one.
+
+**A timestamp is a string on the wire, and must not stay one.** Found while
+building phase 2, not while planning it: JSON has no way to spell a timestamp,
+so the executor sends ISO-8601 text, and Arrow refuses to build a timestamp
+array from strings. The wrong fix is to let the column be text — the engine
+called it a date and a chart would then sort it lexically. The right one is to
+build a string array and *cast* it to the declared type, which keeps the
+declaration in charge: a value that is not a timestamp fails at fetch time
+instead of surviving as text in a column everything downstream believes is a
+date. Same rule as the decimal, arrived at from the other direction.
 
 **The workspace cache is `service` tier.** `ingest_to_workspace()` writes
 parquet after a fetch. The fetch ran as the caller; the parquet does not carry

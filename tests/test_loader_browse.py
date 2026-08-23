@@ -143,7 +143,19 @@ def test_the_columns_a_caller_may_not_read_are_not_in_the_listing(cfg):
     assert analyst < finance, f"expected the analyst to see fewer columns: {analyst} vs {finance}"
 
 
-def test_fetching_is_honest_about_not_being_built(cfg):
-    """Phase 1 does not fetch, and says so rather than returning an empty table."""
-    with pytest.raises(NotImplementedError, match="phase 2"):
-        _loader_for("carol", cfg).fetch_data_as_arrow("contoso_warehouse.dbo.dim_customer")
+def test_a_service_tier_source_says_so_where_a_person_will_meet_it(cfg):
+    """§6: the tier is reported, not assumed, and not only in the documents.
+
+    `contoso_support` is PostgreSQL with no Entra trust, so the engine cannot
+    tell callers apart and the gateway's roles are the entire control. Someone
+    exploring should be able to see which of the two they are in.
+    """
+    loader = _loader_for("carol", cfg)
+    loader.source = "contoso_support"
+    tables = loader.list_tables()
+    assert tables, "no tables in the service-tier source"
+    entry = tables[0]
+    assert entry["metadata"]["authz_tier"] == "service"
+    assert "service tier" in entry["metadata"].get("description", ""), (
+        "the tier is in the metadata but nothing a person reads says what it means"
+    )

@@ -11,10 +11,13 @@ executor instead of holding a warehouse credential of its own — so an
 exploratory charting session inherits on-behalf-of identity, the schema
 allow-list, the row ceiling, and a refusal that stays a refusal.
 
-> **Status: phase 0 done, no loader yet.** The two decisions the design rested
-> on have been checked and both moved the plan: the caller's bearer *does*
-> survive the gateway's REST route, and the loader interface was wrong in four
-> ways when read from `main` instead of the pin.
+> **Status: it fetches.** Phases 0–2 of [`docs/00-plan.md`](docs/00-plan.md)
+> §10 are done: the plugin is discovered from `DF_PLUGIN_DIR`, browses as the
+> caller, and imports a table with the engine's own types — a `decimal(19,4)`
+> arrives as a `decimal128(19,4)`, not a double. What is **not** done is the
+> reason the repository exists: nothing yet carries the catalog's definitions
+> into what the model reads, and the wrong-winner question has not been asked
+> through the UI. [`docs/parity.md`](docs/parity.md) is the ledger.
 > [`docs/00-plan.md`](docs/00-plan.md) is the design — the interface, the
 > mapping onto the executor's contract, the four hazards, and the order of
 > work. [`docs/parity.md`](docs/parity.md) is green only on rows about files
