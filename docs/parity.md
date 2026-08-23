@@ -40,7 +40,7 @@ moved the plan.
 |---|---|---|---|
 | Every `make` target a document names exists — the rule that would have caught `make login` being named in three places before it was written | 🟢 | `make test` | n/a |
 | The tenant issues a device code, and an unfinished sign-in reads as *pending* rather than as a failure | 🟢 **run** | `make test` | n/a |
-| The token file is `0600`, set before the bytes are written rather than after | 🟢 | `make test` | n/a |
+| The token file is `0600`, set before the bytes are written rather than after | 🟢 **on POSIX only** — Windows does not implement these bits, and `scripts/login.py` says so rather than implying a guarantee it cannot keep. The check skips there with that reason | `make test` | n/a |
 | The broker names the identity it signed in as, without trusting the token to authorize anything | 🟢 | `make test` | n/a |
 | **A person completes the sign-in and the loader reads the token** | 🔴 **not run** — the emulator's `verification_uri` names its in-network hostname, which a workstation browser cannot resolve (`upstream-issues.md` 2). The witnesses above stop exactly where a browser would start | — | not yet |
 

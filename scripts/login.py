@@ -79,11 +79,17 @@ def write_token(path: pathlib.Path, token: str) -> None:
     Creating the file and then chmod-ing it leaves a window where the token is
     world-readable. Short, but it is the kind of window that only ever gets
     noticed after it matters.
+
+    **POSIX only.** Windows does not implement these bits, and `chmod` there
+    sets little more than the read-only flag. The token still lands in the
+    user's own profile, but this function cannot promise on Windows what it
+    promises on Linux and macOS, so it does not — `docs/parity.md` says which
+    platforms the row covers.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
     path.touch(mode=0o600, exist_ok=True)
     path.chmod(0o600)
-    path.write_text(token)
+    path.write_text(token, encoding="utf-8")
 
 
 def main() -> int:

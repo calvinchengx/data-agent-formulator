@@ -11,6 +11,7 @@ from __future__ import annotations
 import pathlib
 import re
 import stat
+import sys
 
 import pytest
 
@@ -24,7 +25,7 @@ PLUGIN = ROOT / "plugin" / "data_agent_data_loader.py"
 
 def test_every_make_target_a_document_names_exists():
     """`make login` was named in three places and did not exist."""
-    targets = set(re.findall(r"^([a-z][a-z-]*):", MAKEFILE.read_text(), re.M))
+    targets = set(re.findall(r"^([a-z][a-z-]*):", MAKEFILE.read_text(encoding="utf-8"), re.M))
     documents = [ROOT / "README.md", PLUGIN, ROOT / ".env.example", *(ROOT / "docs").glob("*.md")]
     # `make up` in `../data-agent-service` is a different Makefile's target and
     # is not this one's to have. The qualifier is what tells them apart, so an
@@ -35,13 +36,17 @@ def test_every_make_target_a_document_names_exists():
         # Newlines collapsed first: the qualifier often wraps onto the next
         # line, and a rule that only worked on unwrapped prose would be a rule
         # about formatting.
-        text = elsewhere.sub("", " ".join(doc.read_text().split()))
+        text = elsewhere.sub("", " ".join(doc.read_text(encoding="utf-8").split()))
         missing = set(re.findall(r"`make ([a-z][a-z-]*)", text)) - targets
         if missing:
             named[doc.name] = missing
     assert not named, f"named in a document, absent from the Makefile: {named}"
 
 
+@pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="POSIX permission bits; Windows does not implement them and login.py says so",
+)
 def test_the_token_file_is_never_world_readable(tmp_path):
     """0600 before the bytes, not after.
 
@@ -52,7 +57,7 @@ def test_the_token_file_is_never_world_readable(tmp_path):
     login.write_token(target, "a-token")
     mode = stat.S_IMODE(target.stat().st_mode)
     assert mode == 0o600, f"token file is {oct(mode)}"
-    assert target.read_text() == "a-token"
+    assert target.read_text(encoding="utf-8") == "a-token"
 
 
 def test_claims_are_read_without_being_trusted():

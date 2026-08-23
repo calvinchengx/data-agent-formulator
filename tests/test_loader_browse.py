@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import importlib.util
 import json
+import os
 import pathlib
 import subprocess
 import sys
@@ -53,7 +54,11 @@ def test_data_formulator_discovers_the_plugin_from_its_own_registry():
         cwd=ROOT,
         capture_output=True,
         text=True,
-        env={"PATH": "/usr/bin:/bin", "DF_PLUGIN_DIR": str(ROOT / "plugin"), "HOME": str(ROOT)},
+        # Inherit the environment and override only what this test decides.
+        # A hand-built env dropped SYSTEMROOT on Windows, where Python then
+        # cannot initialise sockets at all -- `WinError 10106` from an import,
+        # which reads as a Data Formulator failure and is not one.
+        env={**os.environ, "DF_PLUGIN_DIR": str(ROOT / "plugin"), "HOME": str(ROOT)},
         check=False,
     )
     assert out.returncode == 0, f"the registry did not load: {out.stderr[-1500:]}"

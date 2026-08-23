@@ -131,7 +131,7 @@ class DataAgentMetricsDataLoader(ExternalDataLoader):
                 f"no released candidates at {self.candidates_path} — run the promoter in "
                 "data-agent-service, or point `candidates` at its output"
             )
-        payload = json.loads(self.candidates_path.read_text())
+        payload = json.loads(self.candidates_path.read_text(encoding="utf-8"))
         return list(payload.get("released") or [])
 
     def _slot_values(self, source: str, table: str, column: str) -> tuple[list[Any], str]:

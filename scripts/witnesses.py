@@ -66,7 +66,7 @@ def main() -> int:
     total = passed + skipped + failed
 
     if args.check:
-        recorded = json.loads(MANIFEST.read_text())
+        recorded = json.loads(MANIFEST.read_text(encoding="utf-8"))
         if failed:
             print(f"FAIL: {failed} check(s) failed")
             return 1

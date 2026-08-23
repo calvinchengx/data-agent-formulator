@@ -30,7 +30,7 @@ SETTING = re.compile(
 def _template_keys() -> set[str]:
     return {
         line.split("=", 1)[0].strip()
-        for line in TEMPLATE.read_text().splitlines()
+        for line in TEMPLATE.read_text(encoding="utf-8").splitlines()
         if "=" in line and not line.lstrip().startswith("#")
     }
 
@@ -49,7 +49,7 @@ def test_every_setting_a_document_names_exists_in_the_template():
     declared = _template_keys()
     missing: dict[str, set[str]] = {}
     for doc in _documents():
-        named = {k for k in SETTING.findall(doc.read_text()) if k not in declared}
+        named = {k for k in SETTING.findall(doc.read_text(encoding="utf-8")) if k not in declared}
         if named:
             missing[doc.name] = named
     assert not missing, f"named in a document, absent from .env.example: {missing}"
@@ -64,7 +64,7 @@ def test_every_key_in_the_template_is_named_by_a_document():
     """
     documented = set()
     for doc in _documents():
-        documented |= set(SETTING.findall(doc.read_text()))
+        documented |= set(SETTING.findall(doc.read_text(encoding="utf-8")))
     undocumented = _template_keys() - documented
     assert not undocumented, f"in .env.example, named by no document: {sorted(undocumented)}"
 
@@ -72,7 +72,7 @@ def test_every_key_in_the_template_is_named_by_a_document():
 def test_no_parity_row_is_green_without_naming_a_check():
     """A green that names no command is a claim nobody can re-run."""
     unproved = []
-    for line in PARITY.read_text().splitlines():
+    for line in PARITY.read_text(encoding="utf-8").splitlines():
         if not line.startswith("|") or "🟢" not in line:
             continue
         cells = [c.strip() for c in line.strip("|").split("|")]
@@ -92,7 +92,7 @@ def test_the_executor_calls_this_design_rests_on_exist_upstream():
     contract = UPSTREAM / "services" / "contract" / "openapi.json"
     if not contract.exists():
         pytest.skip(f"upstream checkout absent at {UPSTREAM}; nothing to check the design against")
-    paths = set(json.loads(contract.read_text())["paths"])
+    paths = set(json.loads(contract.read_text(encoding="utf-8"))["paths"])
     required = {"/sources", "/tables", "/tables/{qualified_name}", "/query"}
     missing = required - paths
     assert not missing, f"the design names calls the contract does not have: {sorted(missing)}"
