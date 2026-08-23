@@ -11,11 +11,12 @@ executor instead of holding a warehouse credential of its own — so an
 exploratory charting session inherits on-behalf-of identity, the schema
 allow-list, the row ceiling, and a refusal that stays a refusal.
 
-> **Status: scaffold.** There is no loader yet. This repository currently
-> holds its own structure, its environment template, and a ledger that says
-> so. [`docs/parity.md`](docs/parity.md) has no green rows, and nothing here
-> claims a working plugin. The design document is the next commit; the loader
-> is the one after that.
+> **Status: designed, not built.** There is no loader yet.
+> [`docs/00-plan.md`](docs/00-plan.md) is the design — the interface, the
+> mapping onto the executor's contract, the four hazards, and the order of
+> work. [`docs/parity.md`](docs/parity.md) is green only on rows about files
+> agreeing with each other, and it names the two decisions the plan makes and
+> has not verified. Nothing here claims a working plugin.
 
 ## Why this exists
 
@@ -58,12 +59,18 @@ the difference is cheaper than discovering it in a chart.
 
 ## Quick start
 
-Nothing to start yet. When there is:
+Nothing to start yet — the loader is step 3 of ten in the plan. What runs
+today:
 
 ```sh
-make doctor   # toolchain, and the upstream stack reachable
+make doctor   # toolchain, and the upstream contract this design is checked against
 make check    # everything CI's quality job runs, in the order it runs it
 ```
+
+The first thing to be built is not the loader. It is one witness: **a token
+identifying user A, sent through the gateway's `/warehouse-rest` route,
+returns user A's rows and not user B's.** The whole design rests on the
+bearer surviving that hop, and it has not been checked. See §5 of the plan.
 
 ## Upstream
 

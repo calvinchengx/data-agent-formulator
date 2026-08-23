@@ -10,3 +10,4 @@ dist/
 .coverage
 website/src/content/docs/
 website/.astro/
+.token

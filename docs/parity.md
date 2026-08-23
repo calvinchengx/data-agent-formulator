@@ -20,9 +20,19 @@ upstream stack.
 | Capability | Witnessed locally | Check | Witnessed running |
 |---|---|---|---|
 | Every setting the documents name exists in `.env.example` | 🟢 | `make test` | n/a |
-| Every key in the template is named by a document | 🔴 not yet — the reverse direction. It turns green when the design document names them all; today most keys are named nowhere but the template itself | — | n/a |
+| Every key in the template is named by a document | 🟢 — `docs/00-plan.md` §11 is the table it is held to | `make test` | n/a |
 | No row here is marked green without naming a check that produces it | 🟢 | `make test` | n/a |
 | The four executor calls this design rests on exist in the upstream contract, checked against `services/contract/openapi.json` rather than against memory | 🟢 | `make test` — skips visibly when the sibling checkout is absent | n/a |
+
+## The design's own unchecked decisions
+
+Two things `docs/00-plan.md` decides and has not verified. Both are written in
+the plan as unchecked; they are here so neither can be quietly forgotten.
+
+| Decision | Witnessed locally | Check | Witnessed running |
+|---|---|---|---|
+| The caller's bearer survives the gateway's `/warehouse-rest` route — user A's token returns user A's rows, not user B's (§5) | 🔴 **not run** — the first thing built. Nothing else rests on solid ground until it passes | — | not yet |
+| The `ExternalDataLoader` interface in §3 is the one in the pinned release, not the one on `main` it was read from | 🔴 not yet | — | not yet |
 
 ## The loader
 

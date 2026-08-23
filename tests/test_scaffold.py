@@ -22,7 +22,9 @@ PARITY = ROOT / "docs" / "parity.md"
 # visibly rather than passing on nothing.
 UPSTREAM = ROOT.parent / "data-agent-service"
 
-SETTING = re.compile(r"\b(DAF_[A-Z0-9_]+|DF_[A-Z0-9_]+|DATA_FORMULATOR_[A-Z0-9_]+)\b")
+SETTING = re.compile(
+    r"\b(DAF_[A-Z0-9_]+|DAS_[A-Z0-9_]+|DF_[A-Z0-9_]+|DATA_FORMULATOR_[A-Z0-9_]+)\b"
+)
 
 
 def _template_keys() -> set[str]:
@@ -51,6 +53,20 @@ def test_every_setting_a_document_names_exists_in_the_template():
         if named:
             missing[doc.name] = named
     assert not missing, f"named in a document, absent from .env.example: {missing}"
+
+
+def test_every_key_in_the_template_is_named_by_a_document():
+    """The other direction: a setting nobody documents is one nobody can decide about.
+
+    docs/00-plan.md §11 is the table this holds the template to. It only became
+    checkable once that document existed; before it, most keys were named
+    nowhere but the template itself.
+    """
+    documented = set()
+    for doc in _documents():
+        documented |= set(SETTING.findall(doc.read_text()))
+    undocumented = _template_keys() - documented
+    assert not undocumented, f"in .env.example, named by no document: {sorted(undocumented)}"
 
 
 def test_no_parity_row_is_green_without_naming_a_check():
