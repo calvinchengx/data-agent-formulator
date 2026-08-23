@@ -44,5 +44,45 @@ correct and must be used as given.
 
 **Status:** to report upstream.
 
+## 3. `data-formulator` — the MSSQL loader's connection string is invalid on ODBC Driver 18
+
+`mssql_data_loader.py` builds `...;Connection Timeout={n};` and defaults
+`driver` to `ODBC Driver 17 for SQL Server`. Against **Driver 18** the driver
+rejects the string outright:
+
+```
+('01S00', '[Microsoft][ODBC Driver 18 for SQL Server]Invalid connection string
+attribute (0) (SQLDriverConnect)')
+```
+
+Reproduced with **raw `pyodbc` and no Data Formulator in the picture**, so it is
+the attribute and not the loader's surroundings: the same string minus
+`Connection Timeout=` gets past attribute parsing and fails later, at connect.
+`Connect Timeout=` is rejected identically. Driver 18 has been the default from
+Microsoft for some time, and Driver 17 is end-of-life, so this will meet more
+people over time.
+
+**Cost:** the connector cannot be used at all on a host with only Driver 18,
+and the error names neither the attribute nor the driver version, so it reads
+as a credentials or network problem.
+
+**Where:** `microsoft/data-formulator`, `py-src/data_formulator/data_loader/mssql_data_loader.py`.
+
+**Status:** to report upstream. Not worked around here — this repository does
+not patch Data Formulator (`docs/00-plan.md` §9).
+
+## 4. This machine — the ODBC stack cannot connect at all
+
+Separate from 3, and the reason the emulator witnesses in `docs/00-plan.md`
+§10 step 9 have not run. With the offending attribute removed, `pyodbc` still
+returns `('HY000', 'The driver did not supply an error!')` against a SQL Server
+this stack's own executor queries successfully over TDS. That is a local
+unixODBC/driver installation problem, not a defect in the emulator and not one
+in Data Formulator.
+
+**Recorded here so the red row in `docs/parity.md` says what it is.** A red
+that fails for a reason other than the one it claims to test is worse than no
+row at all.
+
 _Nothing else recorded. Data Formulator itself has not been run as an
 application yet._

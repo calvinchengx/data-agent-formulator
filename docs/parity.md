@@ -78,9 +78,21 @@ belongs in [`upstream-issues.md`](upstream-issues.md).
 
 | Connector | Emulator | Witnessed locally | Witnessed running |
 |---|---|---|---|
-| `mssql_data_loader` | `fabric-emulator` (+ SQL Server) | 🔴 not yet | not yet |
+| `mssql_data_loader` | `fabric-emulator` (+ SQL Server) | 🔴 **blocked, not failed** — this machine's ODBC stack cannot connect to a SQL Server the executor queries fine (`upstream-issues.md` 4). Separately, the connector's own connection string is invalid on Driver 18 (`upstream-issues.md` 3), reproduced with raw `pyodbc` | — | not yet |
 | `azure_blob_data_loader` | `azure-emulators` | 🔴 not yet | not yet |
-| `databricks_data_loader` | `databricks-emulator` | 🔴 not yet | not yet |
+| `databricks_data_loader` | `databricks-emulator` | ⚫ **not applicable at the pin** — `data_formulator==0.7.0` has no Databricks connector; it lands after this release. Waiting on the pin, not on the emulator | — | n/a |
+
+## Released metrics (§8 phase 2)
+
+| Capability | Witnessed locally | Check | Witnessed running |
+|---|---|---|---|
+| Tables are the promoter's released templates, and the measure is computed by the warehouse | 🟢 **run** — `SUM(revenue_usd)` arrives as `decimal128(38, 4)` holding exact `Decimal`s | `make test` | not yet |
+| The raw column the wrong derivation would need is **not** offered beside the metric | 🟢 — this is the property `data_agent` cannot have | `make test` | not yet |
+| A slot value is never chosen for the person: each becomes its own table, with the binding visible in the name | 🟢 **run** — two fiscal years, two tables | `make test` | not yet |
+| An aggregate is typed from what it aggregates, and an untypeable one is refused | 🟢 | `make test` | n/a |
+| A released template is not a way around the executor: it still runs as the caller | 🟢 **run** — a principal with no role is refused the released statement too | `make test` | not yet |
+| The promoter's "degraded title" warning is passed on rather than smoothed | 🟢 | `make test` | not yet |
+| Released candidates come from an API rather than the promoter's output file | 🔴 **not built anywhere** — no upstream surface serves them (`upstream-issues.md` 1 is the related gap). The path is configuration, and this loader is only as fresh as the last promoter run | — | n/a |
 
 ## Not measured, and why
 

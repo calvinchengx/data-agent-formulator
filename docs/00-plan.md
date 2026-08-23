@@ -353,7 +353,9 @@ being wrong and rewritten.
    evidence, and failures filed upstream. **Not `databricks`:** the pin has no
    `databricks_data_loader.py`; it arrives after 0.7.0. That row waits for the
    pin to move rather than for the emulator.
-10. **The metrics loader** (§8 phase 2).
+10. ~~**The metrics loader**~~ **Done**, with one seam left open: there is no
+    API that serves released candidates, so it reads the promoter's output
+    file by configured path. That is recorded rather than hidden.
 
 ## 11. Settings
 
@@ -373,6 +375,7 @@ lacks — or a key in the template named nowhere — fails `make test`.
 | `DAF_WAREHOUSE_REST_PATH` | the loader | `/warehouse-rest` — the executor's REST route for non-MCP clients (§5) |
 | `DAF_WAREHOUSE_MCP_PATH` | the loader, if §5 is rewritten | `/warehouse/mcp`. Present because the fallback in §5 must have a home, not because it is used |
 | `DAF_EXECUTOR_SURFACE` | the loader | `rest` or `mcp`. The decision in §5, in one place |
+| `DAF_CANDIDATES` | the metrics loader | The promoter's released candidates. A file path, because nothing serves them over HTTP |
 | `DAF_CATALOG_SOURCE` | the loader | The HTTP source holding the catalog (`om_catalog_api`). Empty browses without definitions |
 | `DAF_SOURCE` | the loader | Which source to browse. Empty means "ask `GET /sources`" |
 | `DAF_TENANT` | `make login` | The tenant the device-code flow authenticates against |

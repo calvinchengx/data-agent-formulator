@@ -11,13 +11,15 @@ executor instead of holding a warehouse credential of its own — so an
 exploratory charting session inherits on-behalf-of identity, the schema
 allow-list, the row ceiling, and a refusal that stays a refusal.
 
-> **Status: it fetches.** Phases 0–2 of [`docs/00-plan.md`](docs/00-plan.md)
-> §10 are done: the plugin is discovered from `DF_PLUGIN_DIR`, browses as the
-> caller, and imports a table with the engine's own types — a `decimal(19,4)`
-> arrives as a `decimal128(19,4)`, not a double. What is **not** done is the
-> reason the repository exists: nothing yet carries the catalog's definitions
-> into what the model reads, and the wrong-winner question has not been asked
-> through the UI. [`docs/parity.md`](docs/parity.md) is the ledger.
+> **Status: both loaders work; nobody has opened the UI.** Every step in
+> [`docs/00-plan.md`](docs/00-plan.md) §10 is done except the two that need a
+> person at a browser. `data_agent` browses and imports as the caller with the
+> engine's own types; `data_agent_metrics` offers the promoter's released
+> metrics, where the raw column the wrong derivation needs is not there to
+> reach for. What is **not** witnessed is Data Formulator itself: no chart has
+> been drawn, and the wrong-winner question has not been asked through the UI.
+> [`docs/parity.md`](docs/parity.md) is the ledger and it is explicit about
+> which is which.
 > [`docs/00-plan.md`](docs/00-plan.md) is the design — the interface, the
 > mapping onto the executor's contract, the four hazards, and the order of
 > work. [`docs/parity.md`](docs/parity.md) is green only on rows about files
@@ -58,7 +60,7 @@ the difference is cheaper than discovering it in a chart.
 
 | | |
 |---|---|
-| **A loader, out of tree** | Data Formulator discovers `*_data_loader.py` from `DF_PLUGIN_DIR`. No fork, no patch, no vendored tree |
+| **Two loaders, out of tree** | `data_agent` for governed tables, `data_agent_metrics` for released metrics. Data Formulator discovers `*_data_loader.py` from `DF_PLUGIN_DIR` — no fork, no patch, no vendored tree |
 | **Semantics carried into the UI** | Column metadata enriched from the catalog, so the model that writes the transformation sees the stated definition and not only the column name |
 | **A third-party parity witness** | Data Formulator's *stock* mssql, blob and databricks loaders pointed at `fabric-emulator`, `azure-emulators` and `databricks-emulator` — evidence produced by code that has never heard of them |
 | **Honest tiers** | A fetch runs as the user; the parquet Data Formulator writes to its workspace afterwards carries no identity. That cache is recorded at `service` tier, as Superset is upstream |
