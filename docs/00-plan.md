@@ -340,9 +340,14 @@ being wrong and rewritten.
 6b. **A popup instead of a token file** — `delegated_login_config()` against
    the tenant (§6). Deferred, not skipped: it changes where the bearer comes
    from and nothing else.
-7. **Definitions in metadata** (§8 phase 1).
+7. ~~**Definitions in metadata**~~ **Done.** One catalog call per browse,
+   indexed by matching FQN endings because the database segment is the
+   engine's and is not derivable from anything the executor reports.
 8. **The wrong-winner question**, asked through Data Formulator, end to end.
-   Green or red, this is the row the repository is for.
+   The two halves that can be checked without a model are done and green: the
+   reversal is real on this data measured through the loader, and the
+   definition that prevents it reaches the metadata. What is left is a person,
+   a browser and a key — and that is the row the repository is for.
 9. **The emulator witnesses.** Data Formulator's stock `mssql` and
    `azure_blob` loaders against this family's emulators — third-party
    evidence, and failures filed upstream. **Not `databricks`:** the pin has no
@@ -368,6 +373,7 @@ lacks — or a key in the template named nowhere — fails `make test`.
 | `DAF_WAREHOUSE_REST_PATH` | the loader | `/warehouse-rest` — the executor's REST route for non-MCP clients (§5) |
 | `DAF_WAREHOUSE_MCP_PATH` | the loader, if §5 is rewritten | `/warehouse/mcp`. Present because the fallback in §5 must have a home, not because it is used |
 | `DAF_EXECUTOR_SURFACE` | the loader | `rest` or `mcp`. The decision in §5, in one place |
+| `DAF_CATALOG_SOURCE` | the loader | The HTTP source holding the catalog (`om_catalog_api`). Empty browses without definitions |
 | `DAF_SOURCE` | the loader | Which source to browse. Empty means "ask `GET /sources`" |
 | `DAF_TENANT` | `make login` | The tenant the device-code flow authenticates against |
 | `DAF_CLIENT_ID` | `make login` | The public client id for that flow |

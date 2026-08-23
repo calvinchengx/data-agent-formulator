@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import contextlib
 import decimal
+import html
 import json
 import os
 import pathlib
@@ -70,6 +71,18 @@ class ExecutorRefusal(ConnectorError):
 
 def _truthy(value: str | None) -> bool:
     return (value or "").strip().lower() in {"1", "true", "yes", "on"}
+
+
+#: One page of catalog entries per browse. OpenMetadata pages its listings, and
+#: a browse that quietly saw the first page would report definitions for some
+#: tables and not others with nothing to say why.
+_CATALOG_PAGE = 1000
+
+#: Said where a person will meet it, not only in the documents (§6). For a
+#: service-tier source the engine cannot tell callers apart.
+_SERVICE_TIER_NOTE = (
+    "service tier: the engine cannot tell callers apart; the gateway's roles are the entire control"
+)
 
 
 def _quote(name: str) -> str:
@@ -223,6 +236,14 @@ class DataAgentDataLoader(ExternalDataLoader):
                 "description": "Which source to browse. Empty browses every SQL source you may see",
             },
             {
+                "name": "catalog_source",
+                "type": "string",
+                "required": False,
+                "default": os.environ.get("DAF_CATALOG_SOURCE", "om_catalog_api"),
+                "tier": "filter",
+                "description": "HTTP source holding the catalog. Empty browses without definitions",
+            },
+            {
                 "name": "max_rows",
                 "type": "string",
                 "required": False,
@@ -277,6 +298,9 @@ real permission decision and names what was denied."""
         self.source = str(self.params.get("source") or "").strip()
         self.token_file = str(self.params.get("token_file") or "./.token")
         self.tls_insecure = _truthy(str(self.params.get("tls_insecure") or ""))
+        self.catalog_source = str(self.params.get("catalog_source") or "").strip()
+        self._catalog: dict[tuple[str, str, str], dict[str, Any]] | None = None
+        self._catalog_note: str = ""
         try:
             self.max_rows = int(str(self.params.get("max_rows") or "10000"))
         except ValueError:
@@ -389,6 +413,7 @@ real permission decision and names what was denied."""
         for src in self.sources():
             name = src.get("name", "")
             tier = src.get("authzTier", "unknown")
+            om_service = str(src.get("openMetadataService") or "")
             listing = self._call("GET", "/tables", query={"source": name})
             for table in listing.get("tables", []):
                 qualified = (
@@ -401,13 +426,15 @@ real permission decision and names what was denied."""
                     {
                         "name": label,
                         "path": [name, table.get("schema", ""), table.get("name", "")],
-                        "metadata": self._table_metadata(name, qualified, tier),
+                        "metadata": self._table_metadata(name, qualified, tier, om_service),
                     }
                 )
         self.ensure_table_keys(results)
         return results
 
-    def _table_metadata(self, source: str, qualified: str, tier: str) -> dict[str, Any]:
+    def _table_metadata(
+        self, source: str, qualified: str, tier: str, om_service: str = ""
+    ) -> dict[str, Any]:
         """Columns as the executor reports them for THIS caller.
 
         A column the access rules deny is not listed, so the model that writes
@@ -426,27 +453,115 @@ real permission decision and names what was denied."""
                 "description": f"Refused: {refusal.detail}",
                 "authz_tier": tier,
             }
-        columns = [
-            {
+        defined = self._definitions_for(om_service, qualified) if om_service else {}
+        column_notes = defined.get("columns") or {}
+        columns = []
+        for col in described.get("columns", []):
+            entry = {
                 "name": col.get("name", ""),
                 "type": col.get("type", ""),
                 "nullable": col.get("nullable", True),
             }
-            for col in described.get("columns", [])
-        ]
+            note = column_notes.get(entry["name"])
+            if note:
+                # The whole of §8 phase 1 is this line: the stated meaning
+                # travels with the column, into what the model reads.
+                entry["description"] = note
+            columns.append(entry)
         meta: dict[str, Any] = {
             "columns": columns,
             "source_metadata_status": "synced" if columns else "partial",
             "authz_tier": tier,
         }
-        if tier == "service":
-            # Said where a person will meet it, not only in the documents. For a
-            # service-tier source the engine cannot tell callers apart.
-            meta["description"] = (
-                "service tier: the engine cannot tell callers apart; "
-                "the gateway's roles are the entire control"
-            )
+        # One description, composed rather than chosen between. The catalog's
+        # meaning comes first because that is what a person is reading for; the
+        # tier and any catalog trouble follow, because §6 says the tier must be
+        # visible where a person meets it and not only in the documents.
+        notes = [
+            defined.get("description") or "",
+            _SERVICE_TIER_NOTE if tier == "service" else "",
+            self._catalog_note,
+        ]
+        composed = " — ".join(n for n in notes if n)
+        if composed:
+            meta["description"] = composed
         return meta
+
+    # -------------------------------------------------------------- catalog
+
+    def _catalog_index(self) -> dict[tuple[str, str, str], dict[str, Any]]:
+        """Descriptions from the catalog, indexed by (service, schema, table).
+
+        One call for a whole browse rather than one per table. The fully
+        qualified name in OpenMetadata is `service.database.schema.table` and
+        the middle part is the *engine's* database name, which differs per
+        source and is not derivable from anything the executor reports — so the
+        index is built by matching the ends rather than by constructing the FQN.
+
+        **This is what §8 phase 1 is.** The model that writes Data Formulator's
+        transformations reads column metadata. A model reading `sale_lines —
+        count of sale lines INCLUDING cancelled ones` is in a different
+        position from one reading `sale_lines`.
+
+        The catalog is reached as a `service`-tier HTTP source, so the
+        executor answers it with the read-only bot for the caller's role. The
+        definitions are therefore scoped to the asker too: an analyst's bot
+        cannot read assets tagged as personal data.
+
+        A catalog that is absent, refused or unreachable is not fatal. Browsing
+        continues without definitions and `_catalog_note` records why, because
+        a browse that fails because the glossary is down would be a worse
+        failure than one without descriptions.
+        """
+        if self._catalog is not None:
+            return self._catalog
+        self._catalog = {}
+        if not self.catalog_source:
+            self._catalog_note = "no catalog source configured"
+            return self._catalog
+        try:
+            payload = self._call(
+                "POST",
+                "/call",
+                body={
+                    "source": self.catalog_source,
+                    "operation": "listTables",
+                    "arguments": {"limit": _CATALOG_PAGE, "fields": "columns"},
+                },
+            )
+        except (ExecutorRefusal, ConnectorError) as exc:
+            self._catalog_note = f"definitions unavailable: {exc}"
+            return self._catalog
+
+        entries = []
+        for item in payload.get("items") or []:
+            entries.extend(item.get("data") or [] if isinstance(item, dict) else [])
+        if len(entries) >= _CATALOG_PAGE:
+            # No silent caps: say what was dropped rather than letting a
+            # partial index read as a complete one.
+            self._catalog_note = (
+                f"catalog listing hit the {_CATALOG_PAGE}-row page and may be incomplete"
+            )
+        for entry in entries:
+            parts = (entry.get("fullyQualifiedName") or "").split(".")
+            if len(parts) < 4:
+                continue
+            key = (parts[0], parts[-2], parts[-1])
+            # OpenMetadata stores descriptions HTML-escaped, so a backtick
+            # arrives as `&#96;`. The model reads this text; leaving the
+            # entities in would put noise in front of the one thing §8 is for.
+            self._catalog[key] = {
+                "description": html.unescape(entry.get("description") or ""),
+                "columns": {
+                    col.get("name", ""): html.unescape(col.get("description") or "")
+                    for col in entry.get("columns") or []
+                },
+            }
+        return self._catalog
+
+    def _definitions_for(self, om_service: str, qualified: str) -> dict[str, Any]:
+        schema, _, table = qualified.rpartition(".")
+        return self._catalog_index().get((om_service, schema, table), {})
 
     # ------------------------------------------------------------- fetching
 

@@ -52,9 +52,12 @@ moved the plan.
 
 | Capability | Witnessed locally | Check | Witnessed running |
 |---|---|---|---|
-| Column metadata carries the catalog's stated definition, so the model writing the transformation sees the meaning and not only the name | 🔴 not yet | — | not yet |
-| A metric that the catalog defines is present as a column, so the derivable-but-wrong field is not the only one to hand | 🔴 not yet | — | not yet |
-| The wrong-winner question, asked through Data Formulator, does not produce the wrong winner | 🔴 **not run** — this is the claim the repository exists to make, and it is unproven | — | not yet |
+| Column metadata carries the catalog's stated definition, so the model writing the transformation sees the meaning and not only the name | 🟢 **run** — `elapsed_minutes` reaches the metadata carrying *NOT the answer to 'how long did we take'*, unescaped | `make test` | not yet |
+| A metric that the catalog defines is present as a column, so the derivable-but-wrong field is not the only one to hand | 🟢 on this data — `resolution_minutes` is a real column beside `elapsed_minutes`. It is **not** general: where a metric is a formula rather than a column, §8 phase 2 is the answer and it is not built | `make test` | not yet |
+| The reversal is real on this data, measured through this loader | 🟢 **run** — ranked by wall-clock, one team is fastest; ranked by the business's definition, a different one is. Measured, not quoted from upstream's README | `make test` | n/a |
+| The metadata states the difference well enough that a model *could* avoid it | 🟢 — the definition says which figure to report, in the text the model reads | `make test` | not yet |
+| **The wrong-winner question, asked through Data Formulator, does not produce the wrong winner** | 🔴 **not run** — this needs a browser, an API key and a person. Everything above is the case for expecting it to pass, and none of it is the same claim | — | not yet |
+| A browse survives a catalog that is down, and says definitions are missing rather than showing none | 🟢 | `make test` | not yet |
 
 ## Data Formulator against the emulators
 
