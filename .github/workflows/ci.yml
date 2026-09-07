@@ -8,6 +8,15 @@ on:
   push:
     branches: [main]
   pull_request:
+
+  # PROOF HAS TO REFRESH ITSELF. ci.yml ran on push and pull_request only, and
+  # it is the ONLY workflow here, so with no commits nothing re-checked this
+  # repo at all: the last green is 2026-08-23, fifteen days old.
+  # A fortnight-old green is not evidence that the build still works against
+  # the ecosystem it pulls from, and the hub flags anything past 14 days.
+  # Weekly. Two jobs, no secrets, so the cost is negligible against knowing.
+  schedule:
+    - cron: '23 5 * * 1'
   workflow_dispatch:
 
 permissions:
